@@ -2,6 +2,8 @@
 
 A simple object detection camera using tensorflow js and coco-ssd model following a codelab on the official tensorflow JS tutorial page, then converted it to react
 
+clone the repo and npm install and you would be able to run it
+
 ## Available Scripts
 
 In the project directory, you can run:
