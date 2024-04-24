@@ -10,6 +10,8 @@ function App() {
   const [showEnableCamButton, setShowEnableCamButton] = useState(false);
   const videoRef = useRef(null);
   const [model, setModel] = useState(null);
+  const [videoSource, setVideoSource] = useState(null);
+  const [children, setChildren] = useState([]);
 
   useEffect(() => {
     document.title = "TensorFLow Tutorial";
@@ -22,6 +24,17 @@ function App() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (showVideo == true) {
+      videoRef.current.srcObject = videoSource;
+      videoRef.current.addEventListener("playing", predictWebcam);
+    }
+  }, [showVideo]);
+
+  useEffect(() => {
+    console.log("children : ", children);
+  });
+
   async function handleEnableWebcam(e) {
     console.log("button pressed");
 
@@ -31,11 +44,12 @@ function App() {
         video: true,
       };
 
-      setShowVideo(true);
       let stream = await navigator.mediaDevices.getUserMedia(constraint);
+      // videoRef.current.srcObject = stream;
+      setVideoSource(stream);
 
-      videoRef.current.srcObject = stream;
-      videoRef.current.addEventListener("playing", predictWebcam);
+      setShowVideo(true);
+      // videoRef.current.addEventListener("playing", predictWebcam);
     } else {
       console.warn("getUserMedia() is not supported on your browser");
     }
@@ -52,15 +66,29 @@ function App() {
       return;
     }
 
-    let predictions = await model.detect(videoRef);
-    console.log("predictions are :", predictions);
+    let predictions = await model.detect(videoRef.current);
+    // console.log("predictions are :", predictions);
+
+    let result = [];
+    predictions.map((prediction) => {
+      if (prediction.score > 0.6) {
+        result.push(prediction);
+      }
+    });
+
+    setChildren(result);
+    window.requestAnimationFrame(predictWebcam);
   }
 
   return (
     <div>
       <h1>TensorFlow.js Hello World</h1>
 
-      {tf && <p className="status">TF.js load version : {tf.version.tfjs}</p>}
+      {model ? (
+        <p className="status">TF.js load version : {tf.version.tfjs}</p>
+      ) : (
+        <p className="status">TF.js and coco-ssd model is loading ...</p>
+      )}
 
       {/* <section id="demos" className="invisible"> */}
       <section id="demos">
@@ -77,13 +105,48 @@ function App() {
           )}
 
           {showVideo && (
-            <video
-              ref={videoRef}
-              id="webcam"
-              autoPlay
-              width="640"
-              height="480"
-            ></video>
+            <div>
+              <video
+                ref={videoRef}
+                id="webcam"
+                autoPlay
+                width="640"
+                height="480"
+              />
+              {children?.map((child, index) => {
+                if (children.length > 0) {
+                  return (
+                    <>
+                      <div
+                        key={index}
+                        className="highlighter"
+                        style={{
+                          left: child.bbox[0],
+                          top: child.bbox[1],
+                          width: child.bbox[2],
+                          height: child.bbox[3],
+                        }}
+                      ></div>
+                      <>
+                        <p
+                          style={{
+                            marginTop: child.bbox[1] - 10,
+                            marginLeft: child.bbox[0],
+                            width: child.bbox[2] - 10,
+                            top: 0,
+                            left: 0,
+                          }}
+                        >
+                          A {child.class} with a{" "}
+                          {Math.round(parseFloat(child.score) * 100)} %
+                          confidence
+                        </p>
+                      </>
+                    </>
+                  );
+                }
+              })}
+            </div>
           )}
         </div>
       </section>
